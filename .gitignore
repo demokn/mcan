@@ -1,0 +1,5 @@
+.idea/
+build/
+dist/
+mcan.egg-info/
+*/__pycache__/
