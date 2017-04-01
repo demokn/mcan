@@ -13,3 +13,11 @@ TODO
 
 ** TODO
 TODO
+
+** Q & A
+1. 使用cron每日自动点餐，输出的log里中文无法正常显示？
+
+   在cron中添加如下设置:
+   #+BEGIN_SRC sh
+   PYTHONIOENCODING=utf-8
+   #+END_SRC
