@@ -23,6 +23,8 @@ class McanConf(object):
         self.__username = kwargs.get('username')
         self.__password = kwargs.get('password')
 
+        self.__debug = kwargs.get('debug')
+
         self.__access_token = kwargs.get('access_token')
         self.__access_token_expires_at = kwargs.get('access_token_expires_at')
         self.__token_type = kwargs.get('token_type')
@@ -88,3 +90,7 @@ class McanConf(object):
     @property
     def appsecret(self):
         return self.__appsecret
+
+    @property
+    def debug_mode(self):
+        return self.__debug

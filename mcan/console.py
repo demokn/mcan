@@ -4,10 +4,10 @@
 MCan.
 
 Cli tools for meican app.
-Copyright (C) 2016 demokn <https://github.com/demokn/mcan>
+Copyright (C) 2017 demokn <https://github.com/demokn/mcan>
 
 Usage:
-  mcan [option] [-c PATH] [-u USER] [-p PASSWD] [--appid=APPID] [--appsecret=APPSECRET] [--favourite=FAVOURITE]
+  mcan [option] [-c PATH] [-u USER] [-p PASSWD] [--appid=APPID] [--appsecret=APPSECRET] [--favourite=FAVOURITE] [--debug]
   mcan (-h | --help)
   mcan --version
 
@@ -19,6 +19,7 @@ Options:
   --appid=APPID                 Specifies the meican client_id.
   --appsecret=APPSECRET         Specifies the meican client_secret.
   --favourite=FAVOURITE         Specifies your favourite dishes.
+  --debug                       Open debug mode.
   --version                     Show version.
 
 See https://github.com/demokn/mcan for more information.
@@ -117,6 +118,12 @@ def main():
         config['appsecret'] = args['--appsecret']
     if args['--favourite']:
         config['favourite'] = json_decode(args['--favourite'])
+    if args['--debug']:
+        config['debug'] = True
+
+    if not config:
+        print(__doc__)
+        exit(1)
 
     if 'favourite' not in config:
         config['favourite'] = []
@@ -124,47 +131,76 @@ def main():
         config['appid'] = 'HRVmPZebY51X4mmhaKfAR2vhuISn1nR'
     if 'appsecret' not in config:
         config['appsecret'] = 'qTgaAN6h6MsKi6c76kNHUZVbujihwpd'
+    if 'debug' not in config:
+        config['debug'] = False
 
     conf = McanConf(
         client_id=config['appid'],
         client_secret=config['appsecret'],
         username=config['user'],
-        password=config['password']
+        password=config['password'],
+        debug=config['debug']
     )
     mcan = McanApp(conf)
     today = date.today().isoformat()
 
     logger.info(ConsoleFormat.yellow('获取用户信息...'))
+    logger.info(ConsoleFormat.white('  姓名: ' + mcan.user['username']))
     calendaritems_list = mcan.get_calendaritems_list(today, today)
-    calendar_item = calendaritems_list['dateList'][0]['calendarItemList'][0]
-    tab_uuid = calendar_item['userTab']['uniqueId']
-    corp_addr_uuid = calendar_item['userTab']['corp']['addressList'][0]['uniqueId']
-    tg_time = '{} {}'.format(today, calendar_item['openingTime']['closeTime'])
+    calendar_list = calendaritems_list['dateList'][0]['calendarItemList']
 
-    logger.info(ConsoleFormat.yellow('获取推荐菜品...'))
-    recommended_dishes = mcan.get_recommendations_dishes(tab_uuid, tg_time)
-    dishes_list = recommended_dishes['othersRegularDishList']
+    for calendar_item in calendar_list:
+        order_available = False
+        if calendar_item['status'] == 'AVAILABLE':
+            order_available = True
+            status_desc = '可点餐'
+            console_format = ConsoleFormat.green
 
-    logger.info(ConsoleFormat.green('今日推荐:'))
-    for dishes in dishes_list:
-        logger.info('  ' + ConsoleFormat.white(dishes['name']))
+        elif calendar_item['status'] == 'CLOSED':
+            status_desc = '已关闭'
+            console_format = ConsoleFormat.white
+        elif calendar_item['status'] == 'ORDER':
+            status_desc = '已点餐'
+            dish_item = calendar_item['corpOrderUser']['restaurantItemList'][0]['dishItemList'][0]
+            status_desc += '  {} x {}'.format(dish_item['dish']['name'], dish_item['count'])
+            console_format = ConsoleFormat.blue
+        else:
+            status_desc = '状态未知'
+            console_format = ConsoleFormat.red
 
-    def select_dishes(favourite_list, dishes_list):
-        for favourite in favourite_list:
-            for dishes in dishes_list:
-                if dishes['name'].find(favourite) != -1:
-                    return dishes
-        return None
+        logger.info(console_format('  {} {} {}'.format(calendar_item['openingTime']['postboxOpenTime'],
+                                                       calendar_item['openingTime']['name'], status_desc)))
 
-    selected_dishes = select_dishes(config['favourite'], dishes_list)
+        if not order_available:
+            continue
+        tab_uuid = calendar_item['userTab']['uniqueId']
+        corp_addr_uuid = calendar_item['userTab']['corp']['addressList'][0]['uniqueId']
+        tg_time = '{} {}'.format(today, calendar_item['openingTime']['closeTime'])
 
-    if selected_dishes is None:
-        selected_dishes = dishes_list[randint(0, len(dishes_list) - 1)]
-    logger.info(ConsoleFormat.green('已为您选择: ' + selected_dishes['name']))
+        logger.info(ConsoleFormat.yellow('获取推荐菜品...'))
+        recommended_dishes = mcan.get_recommendations_dishes(tab_uuid, tg_time)
+        dishes_list = recommended_dishes['othersRegularDishList']
 
-    order_list = [{'count': 1, 'dishId': selected_dishes['id']}]
-    logger.info(ConsoleFormat.yellow('正在为您下单...'))
-    resp = mcan.orders_add(tab_uuid, corp_addr_uuid, tg_time, json.dumps(order_list))
-    logger.info(ConsoleFormat.green('已成功下单: '))
-    logger.info('  %s x %s' % (ConsoleFormat.white(selected_dishes['name']), ConsoleFormat.white(str(1))))
-    logger.info('%s %s', ConsoleFormat.green('订单号:'), ConsoleFormat.red(resp['order']['uniqueId']))
+        logger.info(ConsoleFormat.green('今日推荐:'))
+        for dishes in dishes_list:
+            logger.info('  ' + ConsoleFormat.white(dishes['name']))
+
+        def select_dishes(favourite_list, dishes_list):
+            for favourite in favourite_list:
+                for dishes in dishes_list:
+                    if dishes['name'].find(favourite) != -1:
+                        return dishes
+            return None
+
+        selected_dishes = select_dishes(config['favourite'], dishes_list)
+
+        if selected_dishes is None:
+            selected_dishes = dishes_list[randint(0, len(dishes_list) - 1)]
+        logger.info(ConsoleFormat.green('已为您选择: ' + selected_dishes['name']))
+
+        order_list = [{'count': 1, 'dishId': selected_dishes['id']}]
+        logger.info(ConsoleFormat.yellow('正在为您下单...'))
+        resp = mcan.orders_add(tab_uuid, corp_addr_uuid, tg_time, json.dumps(order_list))
+        logger.info(ConsoleFormat.green('已成功下单: '))
+        logger.info('  %s x %s' % (ConsoleFormat.white(selected_dishes['name']), ConsoleFormat.white(str(1))))
+        logger.info('%s %s', ConsoleFormat.green('订单号:'), ConsoleFormat.red(resp['order']['uniqueId']))

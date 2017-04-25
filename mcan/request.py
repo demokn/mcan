@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import requests
+import logging
 
 from .exceptions import McanApiError
+
+
+logger = logging.getLogger(__name__)
+sh = logging.StreamHandler()
+fmt = logging.Formatter('%(message)s')
+sh.setFormatter(fmt)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(sh)
 
 
 class McanRequest(object):
@@ -23,6 +32,16 @@ class McanRequest(object):
         """
         self.__conf = conf
 
+    @property
+    def debug(self):
+        """ 是否开启debug模式 """
+        return self.__conf.debug_mode
+
+    def log(self, msg):
+        """ 输出调试日志 """
+        if self.debug:
+            logger.debug(msg)
+
     def request(self, method, url, without_token=False, **kwargs):
         """
         向美餐服务器发送请求
@@ -35,13 +54,19 @@ class McanRequest(object):
         if not without_token:
             self.HEADERS['Authorization'] = '{} {}'.format(self.__conf.token_type, self.__conf.access_token)
 
-        if 'params' in kwargs:
+        if method == 'post':
+            kwargs.setdefault('params', {})
             kwargs['params']['client_id'] = self.__conf.appid
             kwargs['params']['client_secret'] = self.__conf.appsecret
-        if 'data' in kwargs:
+        elif method == 'get':
+            kwargs.setdefault('data', {})
             kwargs['data']['client_id'] = self.__conf.appid
             kwargs['data']['client_secret'] = self.__conf.appsecret
+        else:
+            logger.warning('Undefined method {}'. format(method))
+            exit(1)
 
+        self.log('{} request {} with header {} params {}'.format(method.capitalize(), url, self.HEADERS, kwargs))
         r = requests.request(
             method=method,
             url=url,
@@ -49,6 +74,7 @@ class McanRequest(object):
             **kwargs
         )
         r_json = r.json()
+        self.log('Response {}'.format(r_json))
         self._check_api_error(r_json)
 
         return r_json

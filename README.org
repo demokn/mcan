@@ -9,7 +9,33 @@
 TODO
 
 ** 项目使用
-TODO
+#+BEGIN_SRC sh
+$ mcan --help
+
+MCan.
+
+Cli tools for meican app.
+Copyright (C) 2017 demokn <https://github.com/demokn/mcan>
+
+Usage:
+  mcan [option] [-c PATH] [-u USER] [-p PASSWD] [--appid=APPID] [--appsecret=APPSECRET] [--favourite=FAVOURITE] [--debug]
+  mcan (-h | --help)
+  mcan --version
+
+Options:
+  -h --help                     Show this screen.
+  -c PATH --config=PATH         Specifies the config file path.
+  -u USER --user=USER           Specifies the meican user.
+  -p PASSWD --password=PASSWD   Specifies the meican password.
+  --appid=APPID                 Specifies the meican client_id.
+  --appsecret=APPSECRET         Specifies the meican client_secret.
+  --favourite=FAVOURITE         Specifies your favourite dishes.
+  --debug                       Open debug mode.
+  --version                     Show version.
+
+See https://github.com/demokn/mcan for more information.
+#+END_SRC
+
 
 ** TODO
 TODO

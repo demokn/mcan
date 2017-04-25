@@ -7,6 +7,8 @@ from .request import McanRequest
 
 
 class McanApp(object):
+    __user = {}
+
     """ 美餐基本功能类 """
     def __init__(self, conf=None):
         self.__conf = conf
@@ -33,6 +35,14 @@ class McanApp(object):
     def request(self, request):
         """ 设置当前 McanRequest 实例  """
         self.__request = request
+
+    @property
+    def user(self):
+        """ 获取当前 USER """
+        if not self.__user:
+            self.__user = self.accounts_show()
+
+        return self.__user
 
     def get_calendaritems_list(self, bg_date, ed_date, with_order_detail=False):
         """
@@ -355,3 +365,36 @@ class McanApp(object):
                 'order': order,
             }
         )
+
+    def accounts_show(self):
+        """
+        {
+            "username": "测试",
+            "nameForShow": "test@test.com",
+            "mobileAccount": {
+                "mobileNumber": "12345678901",
+                "verified": false
+            },
+            "nameForEcard": "测试",
+            "emailForEcard": "t*t@t*.com",
+            "balanceInCent": null,
+            "uniqueId": "3a5f85dea4cd",
+            "internal": false,
+            "corpList": [
+                {
+                    "useCloset": false,
+                    "namespace": "563338",
+                    "excludedPayments": []
+                },
+                {
+                    "useCloset": false,
+                    "namespace": "665987",
+                    "excludedPayments": []
+                }
+            ],
+            "userType": "CORP",
+            "needResetPassword": false
+        }
+        :return:
+        """
+        return self.request.get(self.conf.url('/accounts/show'))
